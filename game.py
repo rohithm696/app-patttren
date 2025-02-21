@@ -2,13 +2,15 @@ import streamlit as st
 import sqlite3
 import datetime
 import base64
+import pandas as pd
+import smtplib
 
 st.set_page_config(page_title="Custom Pattern App")  # Change browser window title
 
 # Database setup
 conn = sqlite3.connect("user_data.db")
 c = conn.cursor()
-c.execute("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, message TEXT, timestamp TEXT)")
+c.execute("CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, message TEXT, timestamp TEXT)")
 conn.commit()
 
 def generate_pattern(n):
@@ -32,6 +34,10 @@ def get_download_link(pattern):
     href = f'<a href="data:file/txt;base64,{b64}" download="pattern.txt">Download Pattern</a>'
     return href
 
+def send_email_notification(email, message):
+    # Placeholder for email notification functionality
+    pass  # Implement SMTP or API-based email sending
+
 st.title("Pattern Generator")
 n = st.number_input("Enter a number:", min_value=1, step=1, value=3)
 if st.button("Generate Pattern"):
@@ -43,12 +49,15 @@ if st.button("Generate Pattern"):
 # Form to collect user messages
 st.header("Send a Message")
 with st.form("message_form"):
+    user_name = st.text_input("Your Name:")
+    user_email = st.text_input("Your Email:")
     user_message = st.text_area("Enter your message:")
     submitted = st.form_submit_button("Send")
     if submitted and user_message:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        c.execute("INSERT INTO messages (message, timestamp) VALUES (?, ?)", (user_message, timestamp))
+        c.execute("INSERT INTO messages (name, email, message, timestamp) VALUES (?, ?, ?, ?)", (user_name, user_email, user_message, timestamp))
         conn.commit()
+        send_email_notification(user_email, user_message)  # Placeholder for email
         st.success("Text sent to the owner successfully!")
 conn.close()
 
@@ -64,8 +73,10 @@ if st.button("View Messages"):
         conn.close()
 
         if messages:
-            for msg in messages:
-                st.write(f"**Message ID {msg[0]} (Received at {msg[2]}):** {msg[1]}")
+            df = pd.DataFrame(messages, columns=["ID", "Name", "Email", "Message", "Timestamp"])
+            st.dataframe(df)
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("Download Messages as CSV", csv, "messages.csv", "text/csv")
             if st.button("Clear Messages"):
                 conn = sqlite3.connect("user_data.db")
                 c = conn.cursor()
