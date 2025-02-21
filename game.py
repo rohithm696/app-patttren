@@ -40,5 +40,23 @@ with st.form("message_form"):
         c.execute("INSERT INTO messages (message) VALUES (?)", (user_message,))
         conn.commit()
         st.success("Text sent to the owner successfully!")
-
 conn.close()
+
+# Secure message display (only accessible with authentication)
+st.header("Owner Login")
+password = st.text_input("Enter owner password:", type="password")
+if st.button("View Messages"):
+    if password == "admin132":  # Change this to a secure password
+        conn = sqlite3.connect("user_data.db")
+        c = conn.cursor()
+        c.execute("SELECT * FROM messages")
+        messages = c.fetchall()
+        conn.close()
+
+        if messages:
+            for msg in messages:
+                st.write(f"**Message ID {msg[0]}:** {msg[1]}")
+        else:
+            st.write("No messages received yet.")
+    else:
+        st.error("Incorrect password! Access denied.")
